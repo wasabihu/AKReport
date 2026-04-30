@@ -1,0 +1,39 @@
+:root {
+  --bg: #0b0c0d;
+  --panel: #151617;
+  --panel-raised: #1b1c1e;
+  --border: #343638;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --accent: #f3ff3d;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  font-family:
+    Avenir Next,
+    PingFang SC,
+    Microsoft YaHei,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}

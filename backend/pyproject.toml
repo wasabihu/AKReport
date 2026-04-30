@@ -1,0 +1,19 @@
+[project]
+name = "akshare-wasa-backend"
+version = "0.1.0"
+description = "财报PDF下载工具后端"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100",
+    "uvicorn>=0.20",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "httpx>=0.24",
+    "akshare>=1.10",
+    "pandas>=2.0",
+    "openpyxl>=3.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+asyncio_mode = "auto"
