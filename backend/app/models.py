@@ -98,6 +98,7 @@ class DownloadResult(BaseModel):
     report_type: ReportType
     status: ItemStatus
     file_path: Path | None = None
+    file_size: int | None = None
     message: str
 
 
@@ -121,6 +122,7 @@ class TaskItemResponse(BaseModel):
     message: str
     name: str | None = None
     file_path: str | None = None
+    file_size: int | None = None
     announcement_title: str | None = None
     pdf_url: str | None = None
 
@@ -161,6 +163,7 @@ class ItemUpdatedEvent(BaseModel):
     code: str
     status: ItemStatus
     message: str | None = None
+    file_size: int | None = None
 
 
 class TaskCompletedEvent(BaseModel):
@@ -201,6 +204,7 @@ class TaskItem(BaseModel):
     status: ItemStatus = ItemStatus.pending
     message: str = ""
     file_path: str | None = None
+    file_size: int | None = None
     name: str | None = None
     announcement_title: str | None = None
     pdf_url: str | None = None

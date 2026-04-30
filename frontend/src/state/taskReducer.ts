@@ -91,8 +91,9 @@ export function taskReducer(state: TaskState, action: TaskAction): TaskState {
               ...item,
               status: action.item.status ?? item.status,
               message: action.item.message ?? item.message,
-              // Also update file_path / name if provided (fetched from backend)
+              // Also update file_path / file_size / name if provided (fetched from backend)
               ...(action.item.file_path != null ? { file_path: action.item.file_path } : {}),
+              ...(action.item.file_size != null ? { file_size: action.item.file_size } : {}),
               ...(action.item.name != null ? { name: action.item.name } : {}),
             }
           : item

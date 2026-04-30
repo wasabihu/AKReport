@@ -37,6 +37,7 @@ export interface TaskItem {
   message: string
   name?: string
   file_path?: string
+  file_size?: number
   announcement_title?: string
   pdf_url?: string
 }
@@ -74,6 +75,7 @@ export interface ItemUpdatedEvent {
   message?: string
   name?: string
   file_path?: string
+  file_size?: number
 }
 
 export interface TaskCompletedEvent {

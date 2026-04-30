@@ -202,6 +202,7 @@ class TaskQueue:
                 self._repo.update_item(
                     item_id, result.status.value, result.message,
                     file_path=str(result.file_path) if result.file_path else None,
+                    file_size=result.file_size,
                     name=sec_name,
                 )
                 await self._emit_log(
@@ -219,6 +220,7 @@ class TaskQueue:
                     "report_type": report_type.value,
                     "status": result.status.value,
                     "message": result.message,
+                    "file_size": result.file_size,
                 })
 
             except Exception as e:

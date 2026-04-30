@@ -75,12 +75,13 @@ class TaskRepository:
         self._conn.execute(
             """INSERT INTO task_items
                (id, task_id, code, market, year, report_type, status,
-                message, file_path, name, announcement_title, pdf_url)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                message, file_path, file_size, name, announcement_title, pdf_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 item.id, item.task_id, item.code, item.market.value,
                 item.year, item.report_type.value, item.status.value,
-                item.message, item.file_path, item.name,
+                item.message, item.file_path, item.file_size,
+                item.name,
                 item.announcement_title, item.pdf_url,
             ),
         )
@@ -91,7 +92,8 @@ class TaskRepository:
             (
                 item.id, item.task_id, item.code, item.market.value,
                 item.year, item.report_type.value, item.status.value,
-                item.message, item.file_path, item.name,
+                item.message, item.file_path, item.file_size,
+                item.name,
                 item.announcement_title, item.pdf_url,
             )
             for item in items
@@ -99,8 +101,8 @@ class TaskRepository:
         self._conn.executemany(
             """INSERT INTO task_items
                (id, task_id, code, market, year, report_type, status,
-                message, file_path, name, announcement_title, pdf_url)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                message, file_path, file_size, name, announcement_title, pdf_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             data,
         )
         self._conn.commit()
@@ -115,6 +117,7 @@ class TaskRepository:
     def update_item(
         self, item_id: str, status: str, message: str = "",
         file_path: str | None = None,
+        file_size: int | None = None,
         announcement_title: str | None = None,
         pdf_url: str | None = None,
         name: str | None = None,
@@ -124,6 +127,9 @@ class TaskRepository:
         if file_path is not None:
             sets.append("file_path = ?")
             values.append(file_path)
+        if file_size is not None:
+            sets.append("file_size = ?")
+            values.append(file_size)
         if announcement_title is not None:
             sets.append("announcement_title = ?")
             values.append(announcement_title)
@@ -238,6 +244,7 @@ class TaskRepository:
                 message=r["message"],
                 name=r.get("name"),
                 file_path=r.get("file_path"),
+                file_size=r.get("file_size"),
                 announcement_title=r.get("announcement_title"),
                 pdf_url=r.get("pdf_url"),
             )

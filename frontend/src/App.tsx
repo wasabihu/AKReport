@@ -636,6 +636,7 @@ function App() {
                   <th>市场</th>
                   <th>年份</th>
                   <th>类型</th>
+                  <th>文件大小</th>
                   <th>消息</th>
                   <th>文件路径</th>
                 </tr>
@@ -649,13 +650,14 @@ function App() {
                       <td>{item.market}</td>
                       <td>{item.year}</td>
                       <td>{item.report_type}</td>
+                      <td>{item.file_size != null ? `${(item.file_size / 1024 / 1024).toFixed(1)}M` : '-'}</td>
                       <td>{item.message}</td>
                       <td className="path-cell" title={item.file_path ?? ''}>{item.file_path ?? '-'}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="table-empty">暂无任务结果</td>
+                    <td colSpan={8} className="table-empty">暂无任务结果</td>
                   </tr>
                 )}
               </tbody>

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS task_items (
     status TEXT NOT NULL DEFAULT 'pending',
     message TEXT NOT NULL DEFAULT '',
     file_path TEXT,
+    file_size INTEGER,
     name TEXT,
     announcement_title TEXT,
     pdf_url TEXT,
@@ -68,6 +69,11 @@ CREATE INDEX IF NOT EXISTS idx_report_candidates_item_id ON report_candidates(ta
 class Database:
     """SQLite database wrapper with initialization."""
 
+    _MIGRATIONS = [
+        # Add new columns here as (table, column, definition) tuples
+        ("task_items", "file_size", "INTEGER"),
+    ]
+
     def __init__(self, settings: Settings) -> None:
         self._db_path = settings.database_path
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -84,8 +90,18 @@ class Database:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(_CREATE_TABLES_SQL)
+            self._run_migrations()
             self._conn.commit()
         return self._conn
+
+    def _run_migrations(self) -> None:
+        """Apply missing column additions (best-effort ALTER TABLE)."""
+        for table, column, col_def in self._MIGRATIONS:
+            try:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+            except sqlite3.OperationalError:
+                # Column already exists — skip
+                pass
 
     def close(self) -> None:
         if self._conn is not None:

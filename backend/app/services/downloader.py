@@ -112,7 +112,8 @@ class Downloader:
             partial_path.write_bytes(content)
             partial_path.rename(target_path)
 
-            logger.info("Downloaded %s -> %s", pdf_url, target_path)
+            file_size = target_path.stat().st_size if target_path.exists() else 0
+            logger.info("Downloaded %s -> %s (%d bytes)", pdf_url, target_path, file_size)
             return DownloadResult(
                 task_id=task_id,
                 code=code,
@@ -121,6 +122,7 @@ class Downloader:
                 report_type=report_type,
                 status=ItemStatus.success,
                 file_path=target_path,
+                file_size=file_size,
                 message=f"下载成功: {filename}",
             )
 
