@@ -16,7 +16,7 @@ interface TaskState {
   rateLimitNotice?: string
 }
 
-type TaskAction =
+export type TaskAction =
   | { type: 'task_created'; taskId: string }
   | { type: 'task_loaded'; task: TaskDetail }
   | { type: 'log_received'; log: TaskLogEvent }

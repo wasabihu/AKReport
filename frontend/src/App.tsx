@@ -10,12 +10,27 @@ import {
   Trash2,
   Zap,
 } from 'lucide-react'
-import { useEffect, useReducer, useState } from 'react'
-import { browseSaveDirectory, createTask, getTask, retryFailedTaskItems, searchReports, getSettings, updateSettings, importExcel } from './api/client'
+import { useEffect, useReducer, useRef, useState, type Dispatch } from 'react'
+import {
+  browseSaveDirectory,
+  clearStockHistory,
+  createTask,
+  getSettings,
+  getStockHistory,
+  getTask,
+  importExcel,
+  openFile,
+  retryFailedTaskItems,
+  searchReports,
+  searchStocks,
+  updateSettings,
+  upsertStockHistory,
+  type StockHistoryItem,
+} from './api/client'
 import { subscribeTaskEvents } from './api/events'
 import type { Market, ReportType, TaskLogEvent, ReportCandidate } from './api/types'
 import { RequestSettings, type RequestSettingsValue } from './components/RequestSettings'
-import { initialTaskState, taskReducer } from './state/taskReducer'
+import { initialTaskState, taskReducer, type TaskAction } from './state/taskReducer'
 import { parseStockCodes } from './utils/codeInput'
 import { getFallbackSaveDir } from './utils/platform'
 import './App.css'
@@ -35,6 +50,50 @@ interface BatchStock {
   market?: string
 }
 
+interface StockHistoryGroupProps {
+  title: string
+  items: StockHistoryItem[]
+  tone: 'a-share' | 'hk'
+  onPick: (code: string) => void
+}
+
+function StockHistoryGroup({ title, items, tone, onPick }: StockHistoryGroupProps) {
+  if (items.length === 0) {
+    return null
+  }
+
+  return (
+    <section className={`stock-history-group ${tone}`}>
+      <div className="stock-history-group-title">
+        <span>{title}</span>
+        <em>{items.length}</em>
+      </div>
+      <div className="stock-history-items">
+        {items.map((stock) => (
+          <button
+            type="button"
+            className="stock-history-item"
+            key={`${stock.market}-${stock.code}`}
+            onClick={() => onPick(stock.code)}
+            title={`${stock.code} ${stock.name ?? ''} (使用${stock.use_count}次)`}
+          >
+            <span className="stock-name">{stock.name || stock.code}</span>
+            {stock.name && <span className="stock-code">{stock.code}</span>}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function resolveStockMarket(stock: Pick<StockHistoryItem, 'code' | 'market'>): 'A股' | '港股' {
+  if (stock.market === 'A股' || stock.market === '港股') {
+    return stock.market
+  }
+
+  return stock.code.replace(/\D/g, '').length <= 5 ? '港股' : 'A股'
+}
+
 function nowLog(message: string, level: TaskLogEvent['level'] = 'info'): TaskLogEvent {
   return {
     time: new Date().toISOString(),
@@ -42,6 +101,164 @@ function nowLog(message: string, level: TaskLogEvent['level'] = 'info'): TaskLog
     task_id: 'local',
     message,
   }
+}
+
+/** 文件路径单元格：双击打开文件 + 点击闪烁反馈 */
+interface PathCellProps {
+  filePath?: string
+  dispatch: Dispatch<TaskAction>
+  nowLog: (message: string, level?: TaskLogEvent['level']) => TaskLogEvent
+}
+
+function PathCell({ filePath, dispatch, nowLog }: PathCellProps) {
+  const cellRef = useRef<HTMLTableCellElement>(null)
+
+  const handleDoubleClick = async () => {
+    if (!filePath) return
+    // 触发闪烁动画
+    cellRef.current?.classList.remove('path-cell-flash')
+    // 强制 reflow 使动画重新触发
+    void cellRef.current?.offsetWidth
+    cellRef.current?.classList.add('path-cell-flash')
+    // 动画结束后移除 class
+    setTimeout(() => cellRef.current?.classList.remove('path-cell-flash'), 400)
+
+    try {
+      await openFile(filePath)
+    } catch (e) {
+      dispatch({
+        type: 'log_received',
+        log: nowLog(e instanceof Error ? e.message : '打开文件失败', 'error'),
+      })
+    }
+  }
+
+  if (!filePath) return <td className="path-cell">-</td>
+
+  return (
+    <td
+      ref={cellRef}
+      className="path-cell path-cell-clickable"
+      title="双击打开文件"
+      onDoubleClick={handleDoubleClick}
+    >
+      {filePath}
+    </td>
+  )
+}
+
+interface StockSearchInputProps {
+  onSelect: (code: string, name: string, market: string) => void
+}
+
+function StockSearchInput({ onSelect }: StockSearchInputProps) {
+  const [keyword, setKeyword] = useState('')
+  const [results, setResults] = useState<{ code: string; name: string; market: string }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // 点击外部关闭下拉
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // 防抖搜索
+  useEffect(() => {
+    if (!keyword.trim()) {
+      setResults([])
+      setShowDropdown(false)
+      return
+    }
+    setLoading(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchStocks(keyword, 15)
+        setResults(res.data)
+        setShowDropdown(res.data.length > 0)
+      } catch (err) {
+        console.error('searchStocks error:', err)
+        setResults([])
+      } finally {
+        setLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [keyword])
+
+  const handleSelect = (item: { code: string; name: string; market: string }) => {
+    onSelect(item.code, item.name, item.market)
+    setKeyword('')
+    setResults([])
+    setShowDropdown(false)
+    inputRef.current?.blur()
+  }
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative' }}>
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="输入股票名称或代码，如：茅台 / 000001"
+        value={keyword}
+        onChange={e => setKeyword(e.target.value)}
+        onFocus={() => results.length > 0 && setShowDropdown(true)}
+        style={{ width: '100%' }}
+      />
+      {loading && (
+        <span style={{ position: 'absolute', right: 10, top: 8, fontSize: 12, color: '#999' }}>
+          搜索中...
+        </span>
+      )}
+      {showDropdown && (
+        <ul
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            background: '#1a1a2e',
+            border: '1px solid #333',
+            borderRadius: 4,
+            maxHeight: 240,
+            overflowY: 'auto',
+            zIndex: 1000,
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
+          }}
+        >
+          {results.map(item => (
+            <li
+              key={item.code}
+              onClick={() => handleSelect(item)}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                borderBottom: '1px solid #222',
+                fontSize: 13,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#2a2a4a')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ fontWeight: 600 }}>{item.code}</span>
+              {'  '}
+              <span style={{ color: '#aac' }}>{item.name}</span>
+              {'  '}
+              <span style={{ color: '#667', fontSize: 11 }}>{item.market}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 function App() {
@@ -76,7 +293,20 @@ function App() {
   const [searching, setSearching] = useState(false)
   const [browsingSaveDir, setBrowsingSaveDir] = useState(false)
   const [taskState, dispatch] = useReducer(taskReducer, initialTaskState)
+  const [stockHistory, setStockHistory] = useState<StockHistoryItem[]>([])
   const isRunning = taskState.status === 'pending' || taskState.status === 'running'
+
+  function refreshStockHistory() {
+    getStockHistory(20).then((res) => setStockHistory(res.data)).catch(() => {})
+  }
+
+  const aShareHistory = stockHistory.filter((stock) => resolveStockMarket(stock) === 'A股')
+  const hkHistory = stockHistory.filter((stock) => resolveStockMarket(stock) === '港股')
+
+  // 加载常用股票
+  useEffect(() => {
+    refreshStockHistory()
+  }, [])
 
   // Load settings from backend on mount
   useEffect(() => {
@@ -208,6 +438,11 @@ function App() {
       }
       setSearchResults(all)
       dispatch({ type: 'log_received', log: nowLog(`搜索完成，找到 ${all.length} 条公告`) })
+      // 记录到常用股票
+      if (code) {
+        const name = all.length > 0 ? (all[0].name ?? all[0].sec_name ?? null) : null
+        upsertStockHistory(code, name, marketMode).then(refreshStockHistory).catch(() => {})
+      }
     } catch (error) {
       dispatch({
         type: 'log_received',
@@ -250,6 +485,20 @@ function App() {
       })
 
       dispatch({ type: 'task_created', taskId: response.data.task_id })
+
+      // 记录到常用股票（单股模式记录单个，批量模式记录全部）
+      if (mode === 'single') {
+        const [code] = parseStockCodes(singleCode)
+        if (code) {
+          upsertStockHistory(code, null, marketMode).then(refreshStockHistory).catch(() => {})
+        }
+      } else {
+        Promise.all(
+          batchStocks.map((stock) =>
+            upsertStockHistory(stock.code, stock.name ?? null, stock.market ?? marketMode),
+          ),
+        ).then(refreshStockHistory).catch(() => {})
+      }
 
       // Fetch initial items so SSE item_updated can match by item_id
       try {
@@ -370,14 +619,26 @@ function App() {
 
             {activeTab === 'single' ? (
               <div className="query-body">
-                <label className="field-label" htmlFor="single-code">
+                {/* 中文名称搜索 */}
+                <label className="field-label" htmlFor="stock-search">
+                  中文名称搜索
+                </label>
+                <StockSearchInput
+                  onSelect={(code, name, market) => {
+                    setSingleCode(code)
+                    setMarketMode(market as Market)
+                    dispatch({ type: 'log_received', log: nowLog(`已选择：${name}（${code}）`) })
+                  }}
+                />
+
+                <label className="field-label" htmlFor="single-code" style={{ marginTop: 12 }}>
                   股票代码
                 </label>
                 <input
                   id="single-code"
                   value={singleCode}
                   disabled={isRunning}
-                  placeholder="例：000001 / 00700"
+                  placeholder="例：000001 / 00700（也可通过上方搜索自动填入）"
                   onChange={(event) => setSingleCode(event.target.value)}
                 />
                 <div className="hint-box">
@@ -581,6 +842,45 @@ function App() {
         </aside>
 
         <section className="main-panel">
+          {/* 常用股票 */}
+          <div className="panel-header stock-history-header">
+            <h2>常用股票</h2>
+            <button type="button" className="ghost-button small" onClick={async () => {
+              setStockHistory([])
+              await clearStockHistory()
+              dispatch({ type: 'log_received', log: nowLog('已清空常用股票') })
+            }}>
+              <Trash2 size={15} />
+              清空
+            </button>
+          </div>
+          <div className="stock-history-list">
+            {stockHistory.length === 0 ? (
+              <div className="empty-state">暂无记录，搜索或下载后会自动记录</div>
+            ) : (
+              <>
+                <StockHistoryGroup
+                  title="A 股"
+                  items={aShareHistory}
+                  tone="a-share"
+                  onPick={(code) => {
+                    setSingleCode(code)
+                    setActiveTab('single')
+                  }}
+                />
+                <StockHistoryGroup
+                  title="港股"
+                  items={hkHistory}
+                  tone="hk"
+                  onPick={(code) => {
+                    setSingleCode(code)
+                    setActiveTab('single')
+                  }}
+                />
+              </>
+            )}
+          </div>
+
           <div className="panel-header">
             <h2>下载日志</h2>
             <button type="button" className="ghost-button small" onClick={() => dispatch({ type: 'reset' })}>
@@ -682,7 +982,7 @@ function App() {
                       <td>{item.report_type}</td>
                       <td>{item.file_size != null ? `${(item.file_size / 1024 / 1024).toFixed(1)}M` : '-'}</td>
                       <td>{item.message}</td>
-                      <td className="path-cell" title={item.file_path ?? ''}>{item.file_path ?? '-'}</td>
+                      <PathCell filePath={item.file_path} dispatch={dispatch} nowLog={nowLog} />
                     </tr>
                   ))
                 ) : (

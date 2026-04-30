@@ -200,6 +200,15 @@ def test_select_best_reads_cninfo_adjunct_size_from_raw_json():
     assert best["raw_json"] == '{"adjunctSize": 15585}'
 
 
+def test_select_best_rejects_wrong_year_even_when_score_reaches_threshold():
+    candidates = [
+        {"announcement_title": "2022年年报", "file_size": 15_585 * 1024},
+        {"announcement_title": "2020年年报", "file_size": 9_000 * 1024},
+    ]
+    best = select_best_candidate(candidates, 2021, ReportType.annual, Market.hk)
+    assert best is None
+
+
 def test_small_file_filter_does_not_apply_to_quarterly_reports():
     candidates = [
         {"announcement_title": "2024年第一季度报告", "file_size": 200 * 1024},

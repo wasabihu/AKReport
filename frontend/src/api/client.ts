@@ -107,3 +107,54 @@ export function importExcel(file: File) {
     },
   )
 }
+
+export interface StockSearchResult {
+  code: string
+  name: string
+  market: string
+}
+
+export async function searchStocks(keyword: string, limit: number = 20) {
+  return apiFetch<{ data: StockSearchResult[]; message: string }>(
+    `/stocks/search?q=${encodeURIComponent(keyword)}&limit=${limit}`,
+  )
+}
+
+export interface StockHistoryItem {
+  code: string
+  name: string | null
+  market: string
+  last_used_at: string
+  use_count: number
+}
+
+export function getStockHistory(limit?: number) {
+  const qs = limit != null ? `?limit=${limit}` : ''
+  return apiFetch<{ data: StockHistoryItem[]; message: string }>(`/stock-history${qs}`)
+}
+
+export function upsertStockHistory(code: string, name: string | null, market: string) {
+  return apiFetch<{ message: string }>('/stock-history', {
+    method: 'POST',
+    body: JSON.stringify({ code, name, market }),
+  })
+}
+
+export function deleteStockHistory(code: string) {
+  return apiFetch<{ message: string }>(`/stock-history/${code}`, {
+    method: 'DELETE',
+  })
+}
+
+export function clearStockHistory() {
+  return apiFetch<{ message: string }>('/stock-history', {
+    method: 'DELETE',
+  })
+}
+
+export function openFile(path: string) {
+  return apiFetch<{ ok: boolean; path: string }>('/open-file', {
+    method: 'POST',
+    body: JSON.stringify({ path }),
+  })
+}

@@ -265,3 +265,88 @@ class TaskRepository:
             items=items,
             stats=stats,
         )
+
+    # ── Stock History ──
+
+    def upsert_stock_history(self, code: str, name: str | None, market: str) -> None:
+        """Insert or update a stock in history (upsert by code)."""
+        now = datetime.now().isoformat()
+        existing = self._conn.execute(
+            "SELECT use_count FROM stock_history WHERE code = ?", (code,)
+        ).fetchone()
+        if existing:
+            self._conn.execute(
+                """UPDATE stock_history
+                   SET name = ?, market = ?, last_used_at = ?, use_count = use_count + 1
+                   WHERE code = ?""",
+                (name, market, now, code),
+            )
+        else:
+            self._conn.execute(
+                """INSERT INTO stock_history (code, name, market, last_used_at, use_count)
+                   VALUES (?, ?, ?, ?, 1)""",
+                (code, name, market, now),
+            )
+        self._conn.commit()
+
+    def get_stock_history(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Get recent stock history, ordered by last_used_at descending."""
+        rows = self._conn.execute(
+            """SELECT code, name, market, last_used_at, use_count
+                 FROM stock_history
+                ORDER BY last_used_at DESC
+                LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def update_stock_history_metadata(
+        self,
+        original_code: str,
+        code: str,
+        name: str | None,
+        market: str,
+    ) -> None:
+        """Update display metadata without changing recency or use count."""
+        if original_code != code:
+            original = self._conn.execute(
+                "SELECT last_used_at, use_count FROM stock_history WHERE code = ?",
+                (original_code,),
+            ).fetchone()
+            target = self._conn.execute(
+                "SELECT last_used_at, use_count FROM stock_history WHERE code = ?",
+                (code,),
+            ).fetchone()
+            if original and target:
+                last_used_at = max(original["last_used_at"], target["last_used_at"])
+                use_count = int(original["use_count"]) + int(target["use_count"])
+                self._conn.execute(
+                    """UPDATE stock_history
+                          SET name = ?, market = ?, last_used_at = ?, use_count = ?
+                        WHERE code = ?""",
+                    (name, market, last_used_at, use_count, code),
+                )
+                self._conn.execute(
+                    "DELETE FROM stock_history WHERE code = ?",
+                    (original_code,),
+                )
+                self._conn.commit()
+                return
+
+        self._conn.execute(
+            """UPDATE stock_history
+                  SET code = ?, name = ?, market = ?
+                WHERE code = ?""",
+            (code, name, market, original_code),
+        )
+        self._conn.commit()
+
+    def delete_stock_history(self, code: str) -> None:
+        """Remove a stock from history."""
+        self._conn.execute("DELETE FROM stock_history WHERE code = ?", (code,))
+        self._conn.commit()
+
+    def clear_stock_history(self) -> None:
+        """Clear all stock history."""
+        self._conn.execute("DELETE FROM stock_history")
+        self._conn.commit()

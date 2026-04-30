@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, import_, reports, settings as settings_api, tasks
+from app.api import health, import_, open_file, reports, settings as settings_api, stock_history, stocks, tasks
 from app.api.exception_handlers import http_exception_handler, validation_exception_handler
 from app.config import Settings
 from app.dependencies import (
@@ -83,7 +83,10 @@ app.add_middleware(
 
 # Register routers
 app.include_router(health.router)
+app.include_router(open_file.router)
 app.include_router(reports.router)
+app.include_router(stocks.router)
 app.include_router(tasks.router)
 app.include_router(settings_api.router)
+app.include_router(stock_history.router)
 app.include_router(import_.router)

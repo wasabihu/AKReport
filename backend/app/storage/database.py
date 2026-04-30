@@ -63,7 +63,17 @@ CREATE TABLE IF NOT EXISTS task_logs (
 CREATE INDEX IF NOT EXISTS idx_task_items_task_id ON task_items(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);
 CREATE INDEX IF NOT EXISTS idx_report_candidates_item_id ON report_candidates(task_item_id);
+
+CREATE TABLE IF NOT EXISTS stock_history (
+    code TEXT PRIMARY KEY,
+    name TEXT,
+    market TEXT NOT NULL,
+    last_used_at TEXT NOT NULL,
+    use_count INTEGER NOT NULL DEFAULT 1
+);
 """
+
+
 
 
 class Database:

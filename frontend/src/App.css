@@ -407,8 +407,8 @@ textarea {
 
 .main-panel {
   border-radius: 8px;
-  display: grid;
-  grid-template-rows: auto minmax(260px, 1fr) auto minmax(190px, 0.7fr);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -422,7 +422,109 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
+.stock-history-header h2 {
+  color: var(--text);
+}
+
+.stock-history-list {
+  display: grid;
+  gap: 14px;
+  padding: 14px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  background: #101112;
+}
+
+.stock-history-group {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.stock-history-group-title {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: #17191a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stock-history-group-title em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.stock-history-group.a-share .stock-history-group-title {
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+.stock-history-group.hk .stock-history-group-title {
+  border-color: rgba(74, 222, 128, 0.28);
+}
+
+.stock-history-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stock-history-item {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid #34383b;
+  background: #181a1b;
+  color: var(--text);
+}
+
+.stock-history-item:hover {
+  background: #1e2122;
+  border-color: #4a5054;
+}
+
+.stock-history-item .stock-code {
+  min-width: 58px;
+  border-radius: 4px;
+  padding: 3px 7px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-weight: 800;
+}
+
+.stock-history-group.a-share .stock-code {
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+}
+
+.stock-history-group.hk .stock-code {
+  background: rgba(74, 222, 128, 0.13);
+  color: #86efac;
+}
+
+.stock-history-item .stock-name {
+  max-width: 150px;
+  color: var(--text);
+  font-weight: 700;
+}
+
 .log-panel {
+  min-height: 260px;
+  flex: 1;
   padding: 16px 20px;
   overflow: auto;
   background: #0c0d0e;
@@ -479,6 +581,32 @@ td {
   max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
+}
+
+.path-cell-clickable:active {
+  background-color: var(--accent-hover, rgba(59, 130, 246, 0.15));
+}
+
+.path-cell-clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.path-cell-clickable:hover {
+  background-color: var(--accent-bg, rgba(59, 130, 246, 0.08));
+  text-decoration: underline;
+  text-decoration-color: var(--accent, #3b82f6);
+}
+
+@keyframes cell-flash {
+  0%   { background-color: var(--accent, #3b82f6); color: #fff; }
+  100% { background-color: transparent; color: inherit; }
+}
+
+.path-cell-flash {
+  animation: cell-flash 0.35s ease-out;
 }
 
 th {

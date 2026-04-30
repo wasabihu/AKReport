@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, createTask } from './client'
+import { ApiError, createTask, getStockHistory, upsertStockHistory } from './client'
 
 describe('api client', () => {
   afterEach(() => {
@@ -51,5 +51,32 @@ describe('api client', () => {
       auto_slowdown: true,
       overwrite_existing: false,
     })).rejects.toMatchObject(new ApiError('请求间隔不能低于 1 秒', 'invalid_rate_limit', 400))
+  })
+
+  it('uses the shared /api prefix for stock history endpoints only once', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], message: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await getStockHistory(20)
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/stock-history?limit=20', expect.any(Object))
+  })
+
+  it('upserts stock history under the shared /api prefix', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ message: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await upsertStockHistory('000001', '平安银行', 'A股')
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/stock-history', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ code: '000001', name: '平安银行', market: 'A股' }),
+    }))
   })
 })

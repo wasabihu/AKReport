@@ -176,8 +176,12 @@ def select_best_candidate(
     for cand in candidates:
         title = cand.get("announcement_title", "")
         s = score_candidate(title, target_year, target_report_type, market)
-        if is_valid_score(s, threshold) and meets_file_size_requirement(
-            cand, target_report_type, min_annual_report_file_size_bytes
+        if (
+            is_valid_score(s, threshold)
+            and candidate_year_matches(title, target_year)
+            and meets_file_size_requirement(
+                cand, target_report_type, min_annual_report_file_size_bytes
+            )
         ):
             scored.append((s, cand))
 
@@ -189,6 +193,12 @@ def select_best_candidate(
     best = scored[0][1].copy()
     best["score"] = scored[0][0]
     return best
+
+
+def candidate_year_matches(title: str, target_year: int) -> bool:
+    """Reject candidates that explicitly mention a different fiscal year."""
+    candidate_year = extract_year_from_title(_clean_title(title))
+    return candidate_year is None or candidate_year == target_year
 
 
 def meets_file_size_requirement(

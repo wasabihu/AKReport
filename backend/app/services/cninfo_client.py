@@ -16,6 +16,7 @@ from app.services.rate_limiter import RateLimiter
 from app.services.report_matcher import (
     derive_date_range,
     get_keywords,
+    infer_market_from_code,
     normalize_stock_code,
     select_best_candidate,
 )
@@ -32,6 +33,7 @@ class CNInfoClient:
             follow_redirects=True,
         )
         self._stock_dicts: dict[str, dict[str, str]] = {}  # code -> orgId
+        self._stock_metadata: dict[str, dict[str, dict[str, str]]] = {}
         self._stock_dicts_loaded_at: float = 0
 
     async def _ensure_stock_dict(self, market: Market) -> dict[str, str]:
@@ -62,6 +64,7 @@ class CNInfoClient:
 
         data = resp.json()
         code_to_orgid: dict[str, str] = {}
+        code_to_metadata: dict[str, dict[str, str]] = {}
         # stockList is the typical key
         items = data.get("stockList", data if isinstance(data, list) else [])
         for item in items:
@@ -69,10 +72,32 @@ class CNInfoClient:
             org_id = str(item.get("orgId", "")).strip()
             if code:
                 code_to_orgid[code] = org_id
+                code_to_metadata[code] = {
+                    "code": code,
+                    "name": str(item.get("zwjc", "")).strip(),
+                    "market": market.value,
+                    "org_id": org_id,
+                }
 
         self._stock_dicts[cache_key] = code_to_orgid
+        self._stock_metadata[cache_key] = code_to_metadata
         self._stock_dicts_loaded_at = now
         return code_to_orgid
+
+    async def get_stock_info(self, code: str, market: Market) -> dict[str, str]:
+        """Return normalized stock code/name/market metadata from CNInfo dictionaries."""
+        resolved_market = infer_market_from_code(code) if market == Market.auto else market
+        norm_code = normalize_stock_code(code, resolved_market)
+        await self._ensure_stock_dict(resolved_market)
+        metadata = self._stock_metadata.get(resolved_market.value, {}).get(norm_code)
+        if metadata:
+            return metadata.copy()
+        return {
+            "code": norm_code,
+            "name": "",
+            "market": resolved_market.value,
+            "org_id": "",
+        }
 
     async def search_announcements(
         self,
@@ -287,6 +312,42 @@ class CNInfoClient:
                 break
 
         return all_candidates
+
+    async def search_stocks(self, keyword: str, limit: int = 20) -> list[dict[str, str]]:
+        """Fuzzy search stocks by code or name from local CNInfo stock dictionaries.
+
+        Returns up to *limit* matches with fields: code, name, market.
+        """
+        from app.models import Market
+
+        keyword_lower = keyword.strip().lower()
+        if not keyword_lower:
+            return []
+
+        # Ensure both A-share and HK dictionaries are loaded
+        await self._ensure_stock_dict(Market.a_share)
+        await self._ensure_stock_dict(Market.hk)
+
+        seen: set[str] = set()
+        results: list[dict[str, str]] = []
+
+        for metadata_map in self._stock_metadata.values():
+            for meta in metadata_map.values():
+                code = meta["code"]
+                if code in seen:
+                    continue
+                name = meta.get("name", "").lower()
+                if keyword_lower in code.lower() or keyword_lower in name:
+                    seen.add(code)
+                    results.append({
+                        "code": code,
+                        "name": meta.get("name", ""),
+                        "market": meta["market"],
+                    })
+                    if len(results) >= limit:
+                        return results
+
+        return results
 
     async def close(self) -> None:
         await self._client.aclose()
