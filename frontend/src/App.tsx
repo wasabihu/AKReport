@@ -156,14 +156,17 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
   const [results, setResults] = useState<{ code: string; name: string; market: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
 
   // 点击外部关闭下拉
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowDropdown(false)
+        setActiveIndex(-1)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -175,6 +178,7 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
     if (!keyword.trim()) {
       setResults([])
       setShowDropdown(false)
+      setActiveIndex(-1)
       return
     }
     setLoading(true)
@@ -183,6 +187,7 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
         const res = await searchStocks(keyword, 15)
         setResults(res.data)
         setShowDropdown(res.data.length > 0)
+        setActiveIndex(-1)
       } catch (err) {
         console.error('searchStocks error:', err)
         setResults([])
@@ -198,7 +203,41 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
     setKeyword('')
     setResults([])
     setShowDropdown(false)
+    setActiveIndex(-1)
     inputRef.current?.blur()
+  }
+
+  // 方向键导航
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown || results.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex(prev => {
+        const next = prev < results.length - 1 ? prev + 1 : 0
+        scrollItemIntoView(next)
+        return next
+      })
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(prev => {
+        const next = prev > 0 ? prev - 1 : results.length - 1
+        scrollItemIntoView(next)
+        return next
+      })
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault()
+      handleSelect(results[activeIndex])
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false)
+      setActiveIndex(-1)
+    }
+  }
+
+  const scrollItemIntoView = (index: number) => {
+    if (!listRef.current) return
+    const items = listRef.current.querySelectorAll('li')
+    items[index]?.scrollIntoView({ block: 'nearest' })
   }
 
   return (
@@ -210,6 +249,7 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
         value={keyword}
         onChange={e => setKeyword(e.target.value)}
         onFocus={() => results.length > 0 && setShowDropdown(true)}
+        onKeyDown={onKeyDown}
         style={{ width: '100%' }}
       />
       {loading && (
@@ -219,6 +259,7 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
       )}
       {showDropdown && (
         <ul
+          ref={listRef}
           style={{
             position: 'absolute',
             top: '100%',
@@ -235,18 +276,18 @@ function StockSearchInput({ onSelect }: StockSearchInputProps) {
             padding: 0,
           }}
         >
-          {results.map(item => (
+          {results.map((item, i) => (
             <li
               key={item.code}
               onClick={() => handleSelect(item)}
+              onMouseEnter={() => setActiveIndex(i)}
               style={{
                 padding: '8px 12px',
                 cursor: 'pointer',
                 borderBottom: '1px solid #222',
                 fontSize: 13,
+                background: i === activeIndex ? '#2a2a4a' : 'transparent',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#2a2a4a')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <span style={{ fontWeight: 600 }}>{item.code}</span>
               {'  '}
@@ -294,10 +335,11 @@ function App() {
   const [browsingSaveDir, setBrowsingSaveDir] = useState(false)
   const [taskState, dispatch] = useReducer(taskReducer, initialTaskState)
   const [stockHistory, setStockHistory] = useState<StockHistoryItem[]>([])
+  const [historyLimit, setHistoryLimit] = useState(20)
   const isRunning = taskState.status === 'pending' || taskState.status === 'running'
 
   function refreshStockHistory() {
-    getStockHistory(20).then((res) => setStockHistory(res.data)).catch(() => {})
+    getStockHistory(historyLimit).then((res) => setStockHistory(res.data)).catch(() => {})
   }
 
   const aShareHistory = stockHistory.filter((stock) => resolveStockMarket(stock) === 'A股')
@@ -845,14 +887,23 @@ function App() {
           {/* 常用股票 */}
           <div className="panel-header stock-history-header">
             <h2>常用股票</h2>
-            <button type="button" className="ghost-button small" onClick={async () => {
-              setStockHistory([])
-              await clearStockHistory()
-              dispatch({ type: 'log_received', log: nowLog('已清空常用股票') })
-            }}>
-              <Trash2 size={15} />
-              清空
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {stockHistory.length >= historyLimit && (
+                <button type="button" className="ghost-button small" onClick={() => {
+                  setHistoryLimit(50)
+                }}>
+                  显示更多
+                </button>
+              )}
+              <button type="button" className="ghost-button small" onClick={async () => {
+                setStockHistory([])
+                await clearStockHistory()
+                dispatch({ type: 'log_received', log: nowLog('已清空常用股票') })
+              }}>
+                <Trash2 size={15} />
+                清空
+              </button>
+            </div>
           </div>
           <div className="stock-history-list">
             {stockHistory.length === 0 ? (

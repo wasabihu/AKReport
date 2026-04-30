@@ -1,85 +1,62 @@
-# AKShare-wasa
+# AKShare Wasa
 
-财报 PDF 下载工具规划项目。
+面向 A 股、港股投资研究的本地财报 PDF 批量下载工具。
 
-目标是基于 AKShare 和巨潮资讯公开数据源，构建一个支持 A 股、港股公司年报和季报批量下载的本地工具。项目将优先保证源站友好访问、下载结果可靠、测试优先开发。
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-frontend-61DAFB?logo=react&logoColor=111)
+![Tests](https://img.shields.io/badge/tests-passing-22c55e)
 
-## 文档
+AKShare Wasa 帮你把上市公司的年报、季报从公开信息源中检索出来，按公司、年份、报告类型批量下载到本地目录。它适合投研资料归档、NotebookLM/知识库投喂、财务分析前的数据准备，也适合需要长期保存 PDF 原文的个人投资者。
 
-- [财报 PDF 下载工具开发文档](docs/财报PDF下载工具开发文档.md)：产品目标、可行性、总体架构和里程碑
-- [后端开发文档](docs/后端开发文档.md)：FastAPI、任务队列、限速器、巨潮接口、下载器和测试要求
-- [前端开发文档](docs/前端开发文档.md)：React UI、组件职责、API client、SSE、状态管理和测试要求
-- [开发规范](docs/开发规范.md)：测试优先、源站保护、提交规范和完成定义
+> 项目使用公开数据源，强调源站友好访问：默认低并发、可调请求间隔、自动降速，不做暴力抓取。
 
-## 当前状态
+## 截图
 
-### 后端开发进度
+![AKShare Wasa 财报 PDF 下载工具](docs/assets/screenshot-main.png)
 
-- [x] 项目结构初始化 + 虚拟环境 + 依赖安装
-- [x] 基础模块：config.py、models.py
-- [x] 限速器：rate_limiter.py + 测试 (8/8 通过)
-- [x] 数据源：cninfo_client.py、akshare_client.py
-- [x] 报告匹配：report_matcher.py + 测试 (28/28 通过，含港股通知信函降权与年报 1MB 过滤)
-- [x] 文件命名：filename.py + 测试 (6/6 通过)
-- [x] 下载器：downloader.py（.partial → 验证 → 年报 1MB 兜底 → atomic rename，测试 8/8 通过）
-- [x] 存储：database.py、repositories.py（4 表 + CRUD）
-- [x] 任务队列：task_queue.py（async worker pool + rate limiter）
-- [x] Excel 导入：excel_importer.py
-- [x] API 端点：health、reports/search、tasks CRUD、SSE、settings、import/excel
-- [x] 主应用：dependencies.py、main.py
-- [x] 单元测试通过 (46/46)
+## 主要功能
 
-### 前后端联调进度
+- 支持 A 股、港股公司财报检索与下载。
+- 支持年报、一季报、半年报、三季报。
+- 支持单股下载、批量股票列表、Excel/CSV 导入。
+- 支持近 1 年、近 5 年、近 10 年批量年份模式。
+- 实时下载日志、任务结果表、失败重试。
+- 常用股票按 A 股/港股分区展示，自动补全股票名。
+- 下载文件自动命名：`市场_代码_公司_年份_报告类型_公告日期.pdf`。
+- 年报小文件保护：默认跳过小于 1MB 的年报候选，避免误下通知信函。
+- 源站保护：请求间隔可调、并发受限、失败自动退避。
+- 跨平台启动脚本：macOS/Linux 使用 `startup.sh`，Windows 使用 `startup.bat`。
 
-- [x] 前端 Vite 代理 `/api` → `http://127.0.0.1:8000`
-- [x] 统一错误格式 `{error: {code, message}}`（exception_handlers.py）
-- [x] createTask 响应补充 `status` 字段
-- [x] SSE 事件：`log` + `item_updated` + `task_completed` + `ping` 心跳
-- [x] `item_updated` 包含 `item_id`/`year`/`report_type` 字段用于精确匹配
-- [x] 前端 taskReducer 支持 `item_id` 优先匹配
-- [x] 前端 `task_created` 后立即 `getTask` 初始化 items
-- [x] 任务完成后前端主动刷新 `task_loaded` 拿最终状态
-- [x] 文件名包含股票名称（从 CNInfo secName 提取）
-- [x] 时间戳 `started_at`/`finished_at` 改为 ISO 格式
-- [x] 重试失败按钮绑定 `retryFailedTaskItems` API
-- [x] 端到端测试通过（A股 000001/002415/300750/601318/600519，港股 00700）
-- [x] 批量多股+多报告类型测试通过（2股×2类型=4项，全部 success）
+## 为什么做这个项目
 
-### 前后端联调 — 新完成
+手动下载财报很琐碎：打开公告网站、搜索公司、筛年份、避开摘要和通知信函、保存并改名。批量做几十家公司、十年数据时尤其痛苦。
 
-- [x] 搜索预览：前端点击"搜索预览"显示报告列表（代码/名称/年份/类型/标题/日期/匹配分）
-- [x] 设置持久化：页面加载自动读取后端设置，修改后 1s debounce 自动保存
-- [x] Excel/CSV 导入：前端文件上传，后端解析并追加到批量代码列表
-- [x] API 端点 `/api/import/excel` 已注册
-- [x] 常用股票：按 A 股/港股分区展示，后端用 CNInfo 股票字典补全股票名并纠正规范代码
+AKShare Wasa 的目标是把这条链路做成一个本地工具：
 
-### 已知问题
+1. 输入股票代码或导入表格。
+2. 选择年份和报告类型。
+3. 让工具自动检索、匹配、下载、命名和记录结果。
 
-- 自动降速 (auto_slowdown) 尚未在实际限速场景下验证
+它不是行情软件，也不提供投资建议。它只专注一件事：把公开披露的财报 PDF 稳定、克制、可追踪地保存到你的电脑。
 
-### 前端开发进度
-
-- [x] 基础 UI：TopBar + LeftPanel + MainPanel + StatusBar
-- [x] 单股/多股查询切换
-- [x] 搜索预览表格（ReportCandidate 列表）
-- [x] 设置持久化（加载/保存 request_interval/concurrency/auto_slowdown/save_dir）
-- [x] Excel/CSV 导入（文件上传 + 解析结果追加到批量列表）
-- [x] SSE 事件订阅 + taskReducer 状态管理
-- [x] 任务控制：创建/取消/重试失败/恢复
-- [x] 日志面板 + 任务结果表格
-- [x] 单元测试通过 (12/12)
-
-## 快速启动
+## 快速开始
 
 ### macOS / Linux
 
 ```bash
+git clone https://github.com/wasabihu/AKShare-wasa.git
+cd AKShare-wasa
 ./startup.sh start
 ```
 
-前端地址: http://127.0.0.1:5173
+打开：
 
-常用命令:
+```text
+http://127.0.0.1:5173
+```
+
+常用命令：
 
 ```bash
 ./startup.sh status
@@ -87,7 +64,75 @@
 ./startup.sh restart
 ```
 
-后端单独启动:
+### Windows
+
+```bat
+git clone https://github.com/wasabihu/AKShare-wasa.git
+cd AKShare-wasa
+startup.bat start
+```
+
+打开：
+
+```text
+http://127.0.0.1:5173
+```
+
+Windows 默认下载目录：
+
+```text
+C:\reports
+```
+
+## 使用方式
+
+### 单股下载
+
+1. 在「单股查询」输入股票代码，例如 `600519`、`000001`、`00700`。
+2. 选择市场、年份范围和报告类型。
+3. 点击「搜索预览」检查匹配结果，或点击「直接下载」。
+
+### 批量下载
+
+1. 切换到「多股查询」。
+2. 手动添加股票，或导入 Excel/CSV。
+3. 设置请求间隔和并发数。
+4. 点击「批量下载」。
+
+Excel/CSV 支持常见列名：
+
+- 股票代码：`股票代码`、`代码`、`code`、`stock_code`、`证券代码`、`symbol`
+- 股票名称：`股票名称`、`名称`、`name`、`stock_name`、`证券名称`
+
+## 技术架构
+
+```text
+frontend/     React + TypeScript + Vite
+backend/      FastAPI + SQLite + async worker queue
+docs/         产品、前端、后端、开发规范文档
+startup.sh    macOS/Linux 一键启动脚本
+startup.bat   Windows 一键启动脚本
+```
+
+后端负责：
+
+- 公告检索与候选评分。
+- 股票代码、市场、名称规范化。
+- 任务队列、限速、自动退避。
+- PDF 下载、校验、原子落盘。
+- SQLite 任务历史和常用股票记录。
+
+前端负责：
+
+- 深色桌面工具风格 UI。
+- 单股/多股查询表单。
+- 搜索预览、实时日志、任务结果表。
+- 常用股票分区展示。
+- 设置持久化和文件导入。
+
+## 开发
+
+后端：
 
 ```bash
 cd backend
@@ -95,41 +140,60 @@ source ../.venv/bin/activate
 PYTHONPATH=. uvicorn app.main:app --reload --port 8000
 ```
 
-### Windows
+前端：
 
-默认下载目录为：
-
-```text
-C:\reports
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-快速启动：
-
-```bat
-startup.bat start
-```
-
-常用命令：
-
-```bat
-startup.bat status
-startup.bat stop
-startup.bat restart
-```
-
-后端单独启动：
-
-```bat
-cd backend
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
-```
-
-API 文档: http://localhost:8000/docs
-
-## 测试
+测试：
 
 ```bash
 cd backend
 source ../.venv/bin/activate
-PYTHONPATH=. pytest app/tests/ -v
+PYTHONPATH=. pytest app/tests/ -q
+
+cd ../frontend
+npm test -- --run
+npm run build
+npm run lint
 ```
+
+## 文档
+
+- [产品与总体开发文档](docs/财报PDF下载工具开发文档.md)
+- [后端开发文档](docs/后端开发文档.md)
+- [前端开发文档](docs/前端开发文档.md)
+- [开发规范](docs/开发规范.md)
+- [项目进度记录](docs/项目进度.md)
+
+## 路线图
+
+- [x] A 股、港股财报下载 MVP。
+- [x] 批量下载、Excel/CSV 导入、实时日志。
+- [x] 常用股票分区展示和股票名自动校正。
+- [x] 年报小文件保护，避免误下通知信函。
+- [ ] 下载历史搜索与筛选。
+- [ ] 更完整的港股官方源 fallback。
+- [ ] 应用打包发布。
+- [ ] GitHub Actions 自动测试。
+
+## 数据源与免责声明
+
+本项目只使用公开披露信息，不提供投资建议，也不保证第三方数据源的完整性。实际使用时请自行核对公告原文和上市公司官方披露。
+
+请尊重源站服务能力。批量下载时建议保持默认低并发和请求间隔，不要进行高频抓取。
+
+## 贡献
+
+欢迎提交 Issue、建议和 PR。适合贡献的方向：
+
+- 增加更多测试样例。
+- 改进港股公告匹配。
+- 优化 Windows/macOS 打包体验。
+- 改进 UI 细节和可访问性。
+- 补充使用文档和截图。
+
+开发原则请先阅读 [开发规范](docs/开发规范.md)。这个项目默认测试优先：改动功能前先补测试，再实现。
