@@ -86,7 +86,8 @@ export interface TaskCompletedEvent {
 export interface ReportCandidate {
   code: string
   market: Market
-  name: string
+  name?: string
+  sec_name?: string
   year: number
   report_type: ReportType
   announcement_title: string
@@ -97,7 +98,7 @@ export interface ReportCandidate {
 
 export interface SearchReportsRequest {
   code: string
-  market_mode: Market
+  market: Market
   year: number
   report_type: ReportType
 }

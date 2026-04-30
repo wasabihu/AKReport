@@ -132,7 +132,9 @@ class CNInfoClient:
                 for ann in announcements:
                     title = ann.get("announcementTitle", "")
                     adjunct_url = ann.get("adjunctUrl", "")
+                    adjunct_size = ann.get("adjunctSize")
                     ann_date_ts = ann.get("announcementTime", 0)
+                    sec_name = ann.get("secName", "")  # 股票名称
 
                     # Convert timestamp to date string
                     if ann_date_ts:
@@ -151,9 +153,11 @@ class CNInfoClient:
                         "announcement_date": ann_date.isoformat(),
                         "announcement_id": ann.get("announcementId", ""),
                         "org_id": ann.get("orgId", org_id),
+                        "sec_name": sec_name,
                         "detail_url": ann.get("adjunctUrl", ""),
                         "pdf_url": pdf_url,
                         "adjunct_url": adjunct_url,
+                        "file_size": _adjunct_size_to_bytes(adjunct_size),
                         "raw_json": json.dumps(ann, ensure_ascii=False),
                     })
 
@@ -184,7 +188,12 @@ class CNInfoClient:
             candidates = expanded_candidates
 
         best = select_best_candidate(
-            candidates, year, report_type, market, self._settings.score_threshold
+            candidates,
+            year,
+            report_type,
+            market,
+            self._settings.score_threshold,
+            self._settings.min_annual_report_file_size_bytes,
         )
 
         # Extract sec_name from the best candidate's raw_json
@@ -248,6 +257,7 @@ class CNInfoClient:
             for ann in result.get("announcements", []):
                 title = ann.get("announcementTitle", "")
                 adjunct_url = ann.get("adjunctUrl", "")
+                adjunct_size = ann.get("adjunctSize")
                 ann_date_ts = ann.get("announcementTime", 0)
 
                 if ann_date_ts:
@@ -269,6 +279,7 @@ class CNInfoClient:
                     "detail_url": ann.get("adjunctUrl", ""),
                     "pdf_url": pdf_url,
                     "adjunct_url": adjunct_url,
+                    "file_size": _adjunct_size_to_bytes(adjunct_size),
                     "raw_json": json.dumps(ann, ensure_ascii=False),
                 })
 
@@ -279,3 +290,11 @@ class CNInfoClient:
 
     async def close(self) -> None:
         await self._client.aclose()
+
+
+def _adjunct_size_to_bytes(value: Any) -> int | None:
+    """CNInfo adjunctSize is reported in KB."""
+    try:
+        return int(value) * 1024
+    except (TypeError, ValueError):
+        return None

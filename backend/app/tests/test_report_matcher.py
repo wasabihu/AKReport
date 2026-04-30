@@ -130,6 +130,19 @@ def test_hk_half_year_keyword():
     assert score >= 60
 
 
+def test_hk_notification_letter_scores_lower_than_actual_annual_report():
+    actual = score_candidate(
+        "2022年年报", 2022, ReportType.annual, Market.hk
+    )
+    notification = score_candidate(
+        "致登记股东之通知信函: (1)股东周年大会; 及(2) 2022年年报、通函、大会通告及有关大会之代表委任表格以及2022年可持续发展报告之发布通知",
+        2022,
+        ReportType.annual,
+        Market.hk,
+    )
+    assert actual > notification
+
+
 # ── select_best_candidate ──
 
 
@@ -150,6 +163,49 @@ def test_select_best_returns_none_below_threshold():
     ]
     best = select_best_candidate(candidates, 2024, ReportType.annual, Market.a_share)
     assert best is None
+
+
+def test_select_best_prefers_true_hk_annual_report_over_notification_letter():
+    candidates = [
+        {
+            "announcement_title": "致登记股东之通知信函: (1)股东周年大会; 及(2) 2022年年报、通函、大会通告及有关大会之代表委任表格以及2022年可持续发展报告之发布通知"
+        },
+        {"announcement_title": "2022年年报"},
+        {
+            "announcement_title": "致新登记股东之信函:(1)股东周年大会；(2) 2022年年报及2022年可持续发展报告；及(3)选择公司通讯之语言版本及收取方式"
+        },
+    ]
+    best = select_best_candidate(candidates, 2022, ReportType.annual, Market.hk)
+    assert best is not None
+    assert best["announcement_title"] == "2022年年报"
+
+
+def test_select_best_filters_small_annual_report_candidates():
+    candidates = [
+        {"announcement_title": "2022年年报", "file_size": 377 * 1024},
+        {"announcement_title": "2022年年报", "file_size": 15_585 * 1024},
+    ]
+    best = select_best_candidate(candidates, 2022, ReportType.annual, Market.hk)
+    assert best is not None
+    assert best["file_size"] == 15_585 * 1024
+
+
+def test_select_best_reads_cninfo_adjunct_size_from_raw_json():
+    candidates = [
+        {"announcement_title": "2022年年报", "raw_json": '{"adjunctSize": 377}'},
+        {"announcement_title": "2022年年报", "raw_json": '{"adjunctSize": 15585}'},
+    ]
+    best = select_best_candidate(candidates, 2022, ReportType.annual, Market.hk)
+    assert best is not None
+    assert best["raw_json"] == '{"adjunctSize": 15585}'
+
+
+def test_small_file_filter_does_not_apply_to_quarterly_reports():
+    candidates = [
+        {"announcement_title": "2024年第一季度报告", "file_size": 200 * 1024},
+    ]
+    best = select_best_candidate(candidates, 2024, ReportType.q1, Market.a_share)
+    assert best is not None
 
 
 # ── derive_date_range ──

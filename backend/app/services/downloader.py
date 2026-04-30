@@ -96,6 +96,21 @@ class Downloader:
                     message="下载文件为空",
                 )
 
+            if (
+                report_type == ReportType.annual
+                and len(content) < self._settings.min_annual_report_file_size_bytes
+            ):
+                return DownloadResult(
+                    task_id=task_id,
+                    code=code,
+                    market=market,
+                    year=year,
+                    report_type=report_type,
+                    status=ItemStatus.failed,
+                    file_size=len(content),
+                    message="年报PDF小于1MB，疑似通知函或非年报正文，已跳过",
+                )
+
             # Validate PDF header
             if not content[:4] == PDF_HEADER:
                 return DownloadResult(

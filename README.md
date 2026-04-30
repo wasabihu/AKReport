@@ -19,15 +19,15 @@
 - [x] 基础模块：config.py、models.py
 - [x] 限速器：rate_limiter.py + 测试 (8/8 通过)
 - [x] 数据源：cninfo_client.py、akshare_client.py
-- [x] 报告匹配：report_matcher.py + 测试 (23/23 通过)
+- [x] 报告匹配：report_matcher.py + 测试 (28/28 通过，含港股通知信函降权与年报 1MB 过滤)
 - [x] 文件命名：filename.py + 测试 (6/6 通过)
-- [x] 下载器：downloader.py（.partial → 验证 → atomic rename）
+- [x] 下载器：downloader.py（.partial → 验证 → 年报 1MB 兜底 → atomic rename，测试 8/8 通过）
 - [x] 存储：database.py、repositories.py（4 表 + CRUD）
 - [x] 任务队列：task_queue.py（async worker pool + rate limiter）
 - [x] Excel 导入：excel_importer.py
 - [x] API 端点：health、reports/search、tasks CRUD、SSE、settings、import/excel
 - [x] 主应用：dependencies.py、main.py
-- [x] 单元测试通过 (37/37)
+- [x] 单元测试通过 (46/46)
 
 ### 前后端联调进度
 

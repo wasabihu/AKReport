@@ -50,7 +50,20 @@ function App() {
   const [batchStocks, setBatchStocks] = useState<BatchStock[]>([])
   const [selectedBatchCodes, setSelectedBatchCodes] = useState<Set<string>>(new Set())
   const [marketMode, setMarketMode] = useState<Market>('auto')
-  const [year, setYear] = useState(new Date().getFullYear() - 1)
+  const [yearMode, setYearMode] = useState<'single' | 'recent5' | 'recent10'>('single')
+  const [singleYear, setSingleYear] = useState(new Date().getFullYear() - 1)
+
+  /** 根据 yearMode 计算出要传给后端的 years 数组 */
+  const resolveYears = (): number[] => {
+    const current = new Date().getFullYear()
+    if (yearMode === 'recent5') {
+      return Array.from({ length: 5 }, (_, i) => current - 1 - i)
+    }
+    if (yearMode === 'recent10') {
+      return Array.from({ length: 10 }, (_, i) => current - 1 - i)
+    }
+    return [singleYear]
+  }
   const [selectedReportTypes, setSelectedReportTypes] = useState<ReportType[]>(['年报'])
   const [saveDir, setSaveDir] = useState(defaultSaveDir)
   const [requestSettings, setRequestSettings] = useState<RequestSettingsValue>({
@@ -181,14 +194,17 @@ function App() {
 
       // Search each report type
       const all: ReportCandidate[] = []
+      const searchYears = resolveYears()
       for (const rt of selectedReportTypes) {
-        const res = await searchReports({
-          code,
-          market_mode: marketMode,
-          year,
-          report_type: rt,
-        })
-        all.push(...res.data)
+        for (const y of searchYears) {
+          const res = await searchReports({
+            code,
+            market: marketMode,
+            year: y,
+            report_type: rt,
+          })
+          all.push(...res.data)
+        }
       }
       setSearchResults(all)
       dispatch({ type: 'log_received', log: nowLog(`搜索完成，找到 ${all.length} 条公告`) })
@@ -224,7 +240,7 @@ function App() {
       const response = await createTask({
         codes,
         market_mode: marketMode,
-        years: [year],
+        years: resolveYears(),
         report_types: selectedReportTypes,
         save_dir: saveDir,
         request_interval_seconds: requestSettings.request_interval_seconds,
@@ -481,16 +497,30 @@ function App() {
             </div>
             <div className="compact-grid">
               <label>
-                年份
-                <input
-                  type="number"
-                  value={year}
+                年份范围
+                <select
+                  value={yearMode}
                   disabled={isRunning}
-                  min="1990"
-                  max={new Date().getFullYear()}
-                  onChange={(event) => setYear(Number(event.target.value))}
-                />
+                  onChange={(event) => setYearMode(event.target.value as 'single' | 'recent5' | 'recent10')}
+                >
+                  <option value="single">近1年（{new Date().getFullYear() - 1}）</option>
+                  <option value="recent5">近5年</option>
+                  <option value="recent10">近10年</option>
+                </select>
               </label>
+              {yearMode === 'single' && (
+                <label>
+                  指定年份
+                  <input
+                    type="number"
+                    value={singleYear}
+                    disabled={isRunning}
+                    min="1990"
+                    max={new Date().getFullYear()}
+                    onChange={(event) => setSingleYear(Number(event.target.value))}
+                  />
+                </label>
+              )}
               <label>
                 市场
                 <select

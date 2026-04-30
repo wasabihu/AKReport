@@ -28,5 +28,6 @@ class Settings(BaseSettings):
     cninfo_static_base_url: str = "http://static.cninfo.com.cn"
     stock_dict_cache_ttl_seconds: int = 86400  # 24 hours
     score_threshold: int = 60
+    min_annual_report_file_size_bytes: int = 1024 * 1024
 
     model_config = {"env_prefix": "WASA_", "env_file": ".env"}
