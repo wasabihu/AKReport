@@ -12,6 +12,7 @@ build/
 .vite/
 
 # Local runtime files
+.runtime/
 *.db
 *.sqlite
 *.sqlite3

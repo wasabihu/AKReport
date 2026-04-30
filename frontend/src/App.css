@@ -475,6 +475,12 @@ td {
   white-space: nowrap;
 }
 
+.path-cell {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 th {
   color: var(--accent);
   background: #111213;

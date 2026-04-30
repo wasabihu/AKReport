@@ -346,7 +346,7 @@ A股_000001_平安银行_2024_年报_2025-03-15.pdf
   "market_mode": "auto",
   "years": [2024, 2025],
   "report_types": ["年报", "半年报"],
-  "save_dir": "/Users/wasabihu/Downloads/reports",
+  "save_dir": "C:/reports",
   "request_interval_seconds": 2.0,
   "concurrency": 1,
   "auto_slowdown": true,
@@ -377,7 +377,7 @@ A股_000001_平安银行_2024_年报_2025-03-15.pdf
   "year": 2024,
   "report_type": "年报",
   "status": "success",
-  "file_path": "/Users/wasabihu/Downloads/reports/A股_000001_平安银行_2024_年报_2025-03-15.pdf",
+  "file_path": "C:/reports/A股_000001_平安银行_2024_年报_2025-03-15.pdf",
   "message": "下载完成"
 }
 ```
@@ -462,7 +462,7 @@ Content-Type: application/json
   "market_mode": "auto",
   "years": [2024],
   "report_types": ["年报"],
-  "save_dir": "/Users/wasabihu/Downloads/reports",
+  "save_dir": "C:/reports",
   "request_interval_seconds": 2.0,
   "concurrency": 1,
   "auto_slowdown": true

@@ -1,13 +1,21 @@
 from pathlib import Path
+import platform
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
+
+
+def default_save_dir() -> Path:
+    if platform.system() == "Windows":
+        return Path("C:/reports")
+    return Path.home() / "Downloads" / "reports"
 
 
 class Settings(BaseSettings):
     app_name: str = "AKShare Wasa"
     app_version: str = "0.1.0"
     database_path: Path = Path("data/app.sqlite3")
-    default_save_dir: Path = Path.home() / "Downloads" / "reports"
+    default_save_dir: Path = Field(default_factory=default_save_dir)
     default_request_interval_seconds: float = 2.0
     default_concurrency: int = 1
     auto_slowdown: bool = True

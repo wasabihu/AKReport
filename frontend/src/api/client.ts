@@ -83,6 +83,13 @@ export function updateSettings(input: Partial<AppSettings>) {
   )
 }
 
+export function browseSaveDirectory() {
+  return apiFetch<{ data: AppSettings & { cancelled?: boolean }; message: string }>(
+    '/settings/browse-save-dir',
+    { method: 'POST' },
+  )
+}
+
 export interface ImportedStock {
   code: string
   name: string

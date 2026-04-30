@@ -70,10 +70,57 @@
 
 ## 快速启动
 
+### macOS / Linux
+
+```bash
+./startup.sh start
+```
+
+前端地址: http://127.0.0.1:5173
+
+常用命令:
+
+```bash
+./startup.sh status
+./startup.sh stop
+./startup.sh restart
+```
+
+后端单独启动:
+
 ```bash
 cd backend
 source ../.venv/bin/activate
 PYTHONPATH=. uvicorn app.main:app --reload --port 8000
+```
+
+### Windows
+
+默认下载目录为：
+
+```text
+C:\reports
+```
+
+快速启动：
+
+```bat
+startup.bat start
+```
+
+常用命令：
+
+```bat
+startup.bat status
+startup.bat stop
+startup.bat restart
+```
+
+后端单独启动：
+
+```bat
+cd backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
 API 文档: http://localhost:8000/docs

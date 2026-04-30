@@ -25,10 +25,12 @@ class TestFilename:
         assert "未知" in name
 
     def test_sanitize_illegal_chars(self):
-        result = sanitize_filename('test:file*name?"with|chars.pdf')
+        result = sanitize_filename('test:file*name?\\bad/name"with|chars.pdf')
         assert ":" not in result
         assert "*" not in result
         assert "?" not in result
+        assert "\\" not in result
+        assert "/" not in result
         assert '"' not in result
         assert "|" not in result
         assert result.endswith(".pdf")

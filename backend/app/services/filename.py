@@ -7,7 +7,7 @@ from app.models import Market, ReportType
 
 
 # Characters forbidden in filenames on Windows/macOS/Linux
-_ILLEGAL_CHARS = re.compile(r'[/:*?"<>|]')
+_ILLEGAL_CHARS = re.compile(r'[\\/:*?"<>|]')
 _MULTI_SPACE = re.compile(r"\s+")
 
 # Maximum filename length (leave room for path)

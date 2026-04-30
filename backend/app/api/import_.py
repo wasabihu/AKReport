@@ -4,6 +4,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -45,7 +46,7 @@ async def import_excel(file: UploadFile = File(...)) -> dict:
             ).model_dump(),
         )
 
-    tmp_path = Path(tempfile.gettempdir()) / f"akshare_import_{file.filename}"
+    tmp_path = Path(tempfile.gettempdir()) / f"akshare_import_{uuid4().hex}{suffix}"
     try:
         with tmp_path.open("wb") as f:
             shutil.copyfileobj(file.file, f)

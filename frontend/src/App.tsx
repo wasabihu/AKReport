@@ -11,12 +11,13 @@ import {
   Zap,
 } from 'lucide-react'
 import { useEffect, useReducer, useState } from 'react'
-import { createTask, getTask, retryFailedTaskItems, searchReports, getSettings, updateSettings, importExcel } from './api/client'
+import { browseSaveDirectory, createTask, getTask, retryFailedTaskItems, searchReports, getSettings, updateSettings, importExcel } from './api/client'
 import { subscribeTaskEvents } from './api/events'
 import type { Market, ReportType, TaskLogEvent, ReportCandidate } from './api/types'
 import { RequestSettings, type RequestSettingsValue } from './components/RequestSettings'
 import { initialTaskState, taskReducer } from './state/taskReducer'
 import { parseStockCodes } from './utils/codeInput'
+import { getFallbackSaveDir } from './utils/platform'
 import './App.css'
 
 const reportTypes: ReportType[] = ['年报', '一季报', '半年报', '三季报']
@@ -26,7 +27,7 @@ const marketModes: { label: string; value: Market }[] = [
   { label: '港股', value: '港股' },
 ]
 
-const defaultSaveDir = '/Users/wasabihu/Downloads/reports'
+const defaultSaveDir = getFallbackSaveDir()
 
 interface BatchStock {
   code: string
@@ -60,6 +61,7 @@ function App() {
   const [formError, setFormError] = useState('')
   const [searchResults, setSearchResults] = useState<ReportCandidate[]>([])
   const [searching, setSearching] = useState(false)
+  const [browsingSaveDir, setBrowsingSaveDir] = useState(false)
   const [taskState, dispatch] = useReducer(taskReducer, initialTaskState)
   const isRunning = taskState.status === 'pending' || taskState.status === 'running'
 
@@ -265,6 +267,47 @@ function App() {
         type: 'log_received',
         log: nowLog(error instanceof Error ? error.message : '任务创建失败', 'error'),
       })
+    }
+  }
+
+  async function browseSaveDir() {
+    if (browsingSaveDir) {
+      return
+    }
+
+    setBrowsingSaveDir(true)
+    try {
+      const res = await browseSaveDirectory()
+      if (res.data.cancelled) {
+        return
+      }
+
+      const nextDir = res.data.default_save_dir
+      if (nextDir) {
+        setSaveDir(nextDir)
+        setFormError('')
+        dispatch({ type: 'log_received', log: nowLog(`保存目录已设置为 ${nextDir}`) })
+      }
+    } catch (error) {
+      const fallback = window.prompt('系统目录选择器不可用，请输入保存目录的完整路径', saveDir)
+      if (fallback == null) {
+        return
+      }
+
+      const trimmed = fallback.trim()
+      if (!trimmed) {
+        setFormError('保存目录不能为空')
+        return
+      }
+
+      setSaveDir(trimmed)
+      setFormError('')
+      dispatch({
+        type: 'log_received',
+        log: nowLog(error instanceof Error ? `已手动设置保存目录：${trimmed}` : `保存目录已设置为 ${trimmed}`, 'warn'),
+      })
+    } finally {
+      setBrowsingSaveDir(false)
     }
   }
 
@@ -494,8 +537,14 @@ function App() {
               disabled={isRunning}
               onChange={(event) => setSaveDir(event.target.value)}
             />
-            <button type="button" className="ghost-button browse-button" disabled={isRunning}>
-              浏览
+            <button
+              type="button"
+              className="ghost-button browse-button"
+              disabled={isRunning || browsingSaveDir}
+              onClick={browseSaveDir}
+              title="选择保存目录"
+            >
+              {browsingSaveDir ? '选择中...' : '浏览'}
             </button>
             <p className="fine-print">后端会在任务开始前检查目录可写性。</p>
           </section>
@@ -601,7 +650,7 @@ function App() {
                       <td>{item.year}</td>
                       <td>{item.report_type}</td>
                       <td>{item.message}</td>
-                      <td>{item.file_path ?? '-'}</td>
+                      <td className="path-cell" title={item.file_path ?? ''}>{item.file_path ?? '-'}</td>
                     </tr>
                   ))
                 ) : (
