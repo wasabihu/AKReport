@@ -21,7 +21,7 @@ if /I "%1"=="status" goto status
 goto usage
 
 :usage
-echo AKShare-wasa Windows 快捷管理脚本
+echo AKReport Windows 快捷管理脚本
 echo.
 echo 用法:
 echo   startup.bat start      启动后端和前端

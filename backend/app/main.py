@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="AKShare Wasa",
+    title="AKReport",
     version="0.1.0",
     lifespan=lifespan,
 )

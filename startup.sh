@@ -16,7 +16,7 @@ FRONTEND_URL="http://$HOST:$FRONTEND_PORT"
 
 usage() {
   cat <<EOF
-AKShare-wasa 快捷管理脚本
+AKReport 快捷管理脚本
 
 用法:
   ./startup.sh start      启动后端和前端

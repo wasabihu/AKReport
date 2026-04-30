@@ -12,7 +12,7 @@ def default_save_dir() -> Path:
 
 
 class Settings(BaseSettings):
-    app_name: str = "AKShare Wasa"
+    app_name: str = "AKReport"
     app_version: str = "0.1.0"
     database_path: Path = Path("data/app.sqlite3")
     default_save_dir: Path = Field(default_factory=default_save_dir)
